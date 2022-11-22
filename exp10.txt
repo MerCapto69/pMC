@@ -1,0 +1,107 @@
+Experiment No: 10 – Interface analog voltage to internal ADC and display value on LCD.
+
+
+#include <p18f4550.h>
+#include "LCD.h"
+#include<stdio.h>
+
+void delay(void);
+void delay()
+{
+    unsigned int i;
+    for(i=0;i<5000;i++);
+}
+
+void ADCInit(void)
+{
+    TRISEbits.RE1 = 1;
+    TRISEbits.RE2 = 1;
+
+    ADCON1bits.VCFG0 = 0;
+    ADCON1bits.VCFG1 = 0;
+
+    ADCON1bits.PCFG0 =1;
+    ADCON1bits.PCFG1 =1;
+    ADCON1bits.PCFG2 =1;
+    ADCON1bits.PCFG3 =0;
+
+    ADCON2bits.ADFM = 1;
+    ADCON2bits.ACQT = 0x05;
+    ADCON2bits.ADCS = 0x06;
+}
+
+unsigned short Read_ADC(unsigned char Ch)
+{
+    ADCON0bits.ADON = 1;
+    ADCON0bits.CHS = Ch;
+    ADCON0bits.GODONE = 1;
+
+    while(ADCON0bits.GO_DONE == 1 );
+    ADCON0bits.ADON = 0;
+    return ADRES;
+}
+
+unsigned char hextoascii(unsigned char hexval)
+{
+    if (hexval < 10)
+    {
+        return hexval + '0';
+    }
+    else
+    {
+       return (hexval - 0xA) + 'A';
+    }
+}
+
+void DisplayResult(unsigned short ADCVal)
+{
+ unsigned char i,text[16];
+ unsigned short tempv;
+ tempv = ADCVal;
+
+ ADCVal = (5500/1024)*tempv;
+ sprintf(text,"%04dmv",ADCVal);
+
+ for(i=0;i<6;i++)
+ {
+   SendData(text[i]);
+ }
+
+ SetLineNumber(2);
+ for(i=0;i<8;i++)
+ {
+   if(tempv & 0x80)
+   {
+    SendData('1');
+   }
+   else
+   {
+     SendData('0');
+   }
+   tempv<<=1;
+ }
+
+}
+
+void main()
+{
+    unsigned short Ch_result;
+
+    TRISB = 0x00;
+    SPPCON = 0x00;
+    ADCInit();
+    InitLCD();
+    ClearDisplay();
+    
+    while(1)
+    {
+        SetLineNumber(1);
+        LCDDisplayStr("ADC Value=");
+        Ch_result = Read_ADC(7);
+        DisplayResult(Ch_result);
+        delay();
+        delay();
+    }
+}
+
+
